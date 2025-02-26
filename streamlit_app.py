@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 # Caricare il file Excel
-file_path = "data/sfl_2005.xlsx"  # Sostituisci con il tuo file
+file_path = "sfl_2005.xlsx"  # Sostituisci con il tuo file
 df = pd.read_excel(file_path)
 
 # Pulire i nomi delle colonne
