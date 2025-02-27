@@ -96,4 +96,4 @@ st.download_button("⬇️ Scarica i dati", csv, "attivita_solare.csv", "text/cs
 
 # Footer
 st.markdown("---")
-st.caption("🔬 Dati ottenuti dall'archivio GOES | Creato con ❤️ usando Streamlit & Plotly")
+st.caption("🔬 Dati ottenuti dall'archivio GOES ")
