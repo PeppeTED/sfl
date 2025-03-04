@@ -23,6 +23,15 @@ df = df[df["Snapshot Time"].dt.year >= 2005]
 # Estrarre la classe dell'evento solare
 df["Class"] = df["Largest Event"].astype(str).str[0]
 
+# Definire una palette di colori pastello per le classi
+color_map = {
+    'A': 'lightcoral',  # Rosso chiaro
+    'B': 'lightpink',   # Rosa chiaro
+    'C': 'lightyellow', # Giallo chiaro
+    'M': 'lightgoldenrodyellow', # Giallo dorato chiaro
+    'X': 'lightgreen'   # Verde chiaro
+}
+
 # Contare gli eventi per anno e classe
 df_grouped = df.groupby([df["Snapshot Time"].dt.year, "Class"]).size().reset_index(name="Count")
 
@@ -30,7 +39,21 @@ df_grouped = df.groupby([df["Snapshot Time"].dt.year, "Class"]).size().reset_ind
 fig = px.bar(df_grouped, x="Snapshot Time", y="Count", color="Class",
              title="Attività Solare nel Tempo",
              labels={"Snapshot Time": "Anno", "Count": "Numero di Eventi"},
-             barmode="stack")
+             barmode="stack", color_discrete_map=color_map)
+
+# Aggiungere un layout personalizzato per migliorare la leggibilità
+fig.update_layout(
+    xaxis_title="Anno",
+    yaxis_title="Numero di Eventi",
+    legend_title="Classe",
+    font=dict(
+        family="Arial, sans-serif",
+        size=12,
+        color="DarkSlateGray"
+    ),
+    paper_bgcolor='lavender',
+    plot_bgcolor='lavenderblush'
+)
 
 # Mostrare la dashboard
 st.title("Dashboard Attività Solare")
