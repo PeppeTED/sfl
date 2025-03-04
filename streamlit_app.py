@@ -53,7 +53,7 @@ df_fermi["Date"] = pd.to_datetime(df_fermi["Date"], errors="coerce")
 # Filtrare i dati dal 2005 per FERMI
 df_fermi = df_fermi[df_fermi["Date"].dt.year >= 2005]
 
-# Contare il numero di eventi per anno nel file FERMI
+# Conteggiare gli eventi annuali per FERMI (solo colonna 'Date')
 df_grouped_fermi = df_fermi.groupby(df_fermi["Date"].dt.year).size().reset_index(name="Count")
 
 # Creare un menu laterale con icone e un aspetto elegante
@@ -77,7 +77,7 @@ if menu == "📊 Dati GOES":
 if menu == "📈 Dati FERMI":
     st.title("📈 Dati FERMI: Attività Solare")
     st.write("Grafico dei dati relativi agli eventi solari nel tempo (dal file FERMI).")
-    # Creare il grafico a istogramma per i dati FERMI
+    # Creare il grafico a istogramma per i dati FERMI (conteggio degli eventi annuali)
     fig_fermi = px.bar(df_grouped_fermi, x="Date", y="Count",
                        title="Numero Totale di Eventi Solari (Dati FERMI)",
                        labels={"Date": "Anno", "Count": "Numero di Eventi"})
