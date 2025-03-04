@@ -23,13 +23,13 @@ df = df[df["Snapshot Time"].dt.year >= 2005]
 # Estrarre la classe dell'evento solare
 df["Class"] = df["Largest Event"].astype(str).str[0]
 
-# Definire una palette di colori pastello per le classi
+# Definire una palette di colori contrastanti per le classi
 color_map = {
-    'A': 'lightcoral',  # Rosso chiaro
-    'B': 'lightpink',   # Rosa chiaro
-    'C': 'lightyellow', # Giallo chiaro
-    'M': 'lightgoldenrodyellow', # Giallo dorato chiaro
-    'X': 'lightgreen'   # Verde chiaro
+    'A': 'red',          # Rosso per A
+    'B': 'orange',       # Arancio per B
+    'C': 'yellow',       # Giallo per C
+    'M': 'green',        # Verde per M
+    'X': 'blue'          # Blu per X
 }
 
 # Contare gli eventi per anno e classe
@@ -37,7 +37,7 @@ df_grouped = df.groupby([df["Snapshot Time"].dt.year, "Class"]).size().reset_ind
 
 # Creare il grafico interattivo con Plotly
 fig = px.bar(df_grouped, x="Snapshot Time", y="Count", color="Class",
-             title="Attività Solare nel Tempo",
+             title="Attività Solare nel Tempo (Dati GOES)",
              labels={"Snapshot Time": "Anno", "Count": "Numero di Eventi"},
              barmode="stack", color_discrete_map=color_map)
 
@@ -49,16 +49,24 @@ fig.update_layout(
     font=dict(
         family="Arial, sans-serif",
         size=12,
-        color="DarkSlateGray"
+        color="Black"
     ),
-    paper_bgcolor='lavender',
-    plot_bgcolor='lavenderblush'
+    paper_bgcolor='white',
+    plot_bgcolor='lightgray'
 )
 
-# Mostrare la dashboard
-st.title("Dashboard Attività Solare")
-st.plotly_chart(fig)
+# Creare un menu laterale
+st.sidebar.title("Menu")
+menu = st.sidebar.radio("Seleziona una sezione:", ["Home", "Dati GOES"])
 
-# Mostrare il dataframe con i dati filtrati
-st.write("📊 **Dati elaborati:**")
-st.dataframe(df)
+# Mostrare la sezione "Dati GOES"
+if menu == "Dati GOES":
+    st.title("Dati GOES: Attività Solare")
+    st.plotly_chart(fig)
+    st.write("📊 **Dati elaborati:**")
+    st.dataframe(df)
+
+# Altre sezioni possono essere aggiunte qui
+if menu == "Home":
+    st.title("Benvenuto nella Dashboard dell'Attività Solare")
+    st.write("Seleziona la sezione 'Dati GOES' per visualizzare i grafici relativi all'attività solare.")
