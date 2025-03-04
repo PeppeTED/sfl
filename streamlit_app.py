@@ -76,13 +76,14 @@ if selected == "📊 Attività Solare":
         color_discrete_map=color_map
     )
 
-    st.plotly_chart(fig_goes, use_container_width=True)
+    # Dividere la pagina in 2 colonne
+    col1, col2 = st.columns(2)
 
-    # Sezione: Analisi Avanzate
-elif selected == "🚀 Analisi Avanzate":
-    st.title("📈 Analisi Avanzate")
+    # Mostrare il grafico GOES nella prima colonna
+    with col1:
+        st.plotly_chart(fig_goes, use_container_width=True)
 
-    # Creare un dataset combinato per confrontare i dati di Fermi e GOES
+    # Creare il dataframe per il confronto con Fermi
     df_fermi_grouped = df_fermi.groupby([df_fermi["Date"].dt.date, "Time"]).size().reset_index(name="Count_Fermi")
     df_goes_grouped["Snapshot Time"] = pd.to_datetime(df_goes_grouped["Snapshot Time"])
 
@@ -97,8 +98,6 @@ elif selected == "🚀 Analisi Avanzate":
         barmode="group"
     )
 
-    st.plotly_chart(fig_comparison, use_container_width=True)
-
-    # Mostrare il dataframe combinato
-    st.write("📊 **Confronto Dati GOES vs Fermi:**")
-    st.dataframe(df_combined)
+    # Mostrare il grafico di confronto nella seconda colonna
+    with col2:
+        st.plotly_chart(fig_comparison, use_container_width=True)
