@@ -22,69 +22,83 @@ selected = option_menu(
     }
 )
 
-# Caricare il file Excel
-file_path = "sfl_2005.xlsx"  # Modifica con il tuo file
+# Caricare il file GOES
+file_path_goes = "sfl_2005.xlsx"  # Modifica con il tuo file GOES
 try:
-    df = pd.read_excel(file_path)
+    df_goes = pd.read_excel(file_path_goes)
 except FileNotFoundError:
-    st.error("Errore: File non trovato. Assicurati di aver caricato il file corretto.")
+    st.error("Errore: File GOES non trovato.")
     st.stop()
 
 # Pulire i nomi delle colonne
-df.columns = df.columns.str.strip()
+df_goes.columns = df_goes.columns.str.strip()
 
 # Verificare se le colonne esistono
-if "Snapshot Time" not in df.columns or "Largest Event" not in df.columns:
-    st.error("Errore: Controlla i nomi delle colonne nel file Excel.")
+if "Snapshot Time" not in df_goes.columns or "Largest Event" not in df_goes.columns:
+    st.error("Errore: Controlla i nomi delle colonne nel file GOES.")
     st.stop()
 
-# Convertire la colonna in formato datetime
-df["Snapshot Time"] = pd.to_datetime(df["Snapshot Time"], errors="coerce")
+# Caricare il file Fermi
+file_path_fermi = "GBM FERMI.xlsx"  # Modifica con il tuo file Fermi
+try:
+    df_fermi = pd.read_excel(file_path_fermi)
+except FileNotFoundError:
+    st.error("Errore: File Fermi non trovato.")
+    st.stop()
 
-# Filtrare i dati dal 2005
-df = df[df["Snapshot Time"].dt.year >= 2005]
+# Pulire i nomi delle colonne
+df_fermi.columns = df_fermi.columns.str.strip()
 
-# Estrarre la classe dell'evento solare
-df["Class"] = df["Largest Event"].astype(str).str[0]
+# Verifica che esista una colonna di tempo e data
+if "Date" not in df_fermi.columns or "Time" not in df_fermi.columns:
+    st.error("Errore: Controlla i nomi delle colonne nel file Fermi.")
+    st.stop()
 
-# Mappare i colori in base all'intensità dei flare
-color_map = {"A": "blue", "B": "cyan", "C": "green", "M": "orange", "X": "red"}
+# Convertire la colonna in formato datetime (per entrambi i file)
+df_goes["Snapshot Time"] = pd.to_datetime(df_goes["Snapshot Time"], errors="coerce")
+df_fermi["Date"] = pd.to_datetime(df_fermi["Date"], errors="coerce")
 
-# Contare gli eventi per anno e classe
-df_grouped = df.groupby([df["Snapshot Time"].dt.year, "Class"]).size().reset_index(name="Count")
-
-# Sezione: ATTIVITÀ SOLARE
+# Sezione: Attività Solare GOES
 if selected == "📊 Attività Solare":
     st.title("🌞 Attività Solare nel Tempo")
 
-    # Creare il grafico interattivo con colori
-    fig = px.bar(
-        df_grouped, x="Snapshot Time", y="Count", color="Class",
-        title="Attività Solare nel Tempo",
-        labels={"Snapshot Time": "Anno", "Count": "Numero di Eventi"},
+    # Elenco dei flares per GOES
+    df_goes["Class"] = df_goes["Largest Event"].astype(str).str[0]
+    color_map = {"A": "blue", "B": "cyan", "C": "green", "M": "orange", "X": "red"}
+    df_goes_grouped = df_goes.groupby([df_goes["Snapshot Time"].dt.date, "Class"]).size().reset_index(name="Count")
+
+    # Grafico GOES
+    fig_goes = px.bar(
+        df_goes_grouped, x="Snapshot Time", y="Count", color="Class",
+        title="Attività Solare GOES",
+        labels={"Snapshot Time": "Data", "Count": "Numero di Eventi"},
         barmode="stack",
         color_discrete_map=color_map
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_goes, use_container_width=True)
 
-    # Legenda personalizzata
-    st.markdown("### 🔥 Intensità dei Solar Flare")
-    legenda = {
-        "A": "🔵 Debole",
-        "B": "🔹 Basso",
-        "C": "🟢 Moderato",
-        "M": "🟠 Forte",
-        "X": "🔴 Estremo"
-    }
-    for flare, desc in legenda.items():
-        st.markdown(f"**{flare}** - {desc}")
-
-    # Mostrare il dataframe con i dati filtrati
-    st.write("📊 **Dati elaborati:**")
-    st.dataframe(df)
-
-# Sezione: ANALISI AVANZATE
+    # Sezione: Analisi Avanzate
 elif selected == "🚀 Analisi Avanzate":
     st.title("📈 Analisi Avanzate")
-    st.write("Qui potrai aggiungere ulteriori analisi, come il confronto con i dati del satellite Fermi.")
+
+    # Creare un dataset combinato per confrontare i dati di Fermi e GOES
+    df_fermi_grouped = df_fermi.groupby([df_fermi["Date"].dt.date, "Time"]).size().reset_index(name="Count_Fermi")
+    df_goes_grouped["Snapshot Time"] = pd.to_datetime(df_goes_grouped["Snapshot Time"])
+
+    # Unire i due dataframe (Fermi e GOES)
+    df_combined = pd.merge(df_goes_grouped, df_fermi_grouped, left_on=["Snapshot Time", "Class"], right_on=["Date", "Time"], how="outer")
+
+    # Grafico di confronto tra GOES e Fermi
+    fig_comparison = px.bar(
+        df_combined, x="Snapshot Time", y=["Count", "Count_Fermi"],
+        title="Confronto Attività Solare: GOES vs Fermi",
+        labels={"Snapshot Time": "Data", "value": "Numero di Eventi"},
+        barmode="group"
+    )
+
+    st.plotly_chart(fig_comparison, use_container_width=True)
+
+    # Mostrare il dataframe combinato
+    st.write("📊 **Confronto Dati GOES vs Fermi:**")
+    st.dataframe(df_combined)
