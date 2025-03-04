@@ -65,14 +65,17 @@ if selected == "📊 Attività Solare":
     # Elenco dei flares per GOES
     df_goes["Class"] = df_goes["Largest Event"].astype(str).str[0]
     color_map = {"A": "blue", "B": "cyan", "C": "green", "M": "orange", "X": "red"}
-    df_goes_grouped = df_goes.groupby([df_goes["Snapshot Time"].dt.date, "Class"]).size().reset_index(name="Count")
 
-    # Grafico GOES
-    fig_goes = px.bar(
-        df_goes_grouped, x="Snapshot Time", y="Count", color="Class",
-        title="Attività Solare GOES",
-        labels={"Snapshot Time": "Data", "Count": "Numero di Eventi"},
-        barmode="stack",
+    # Raggruppamento annuale dei dati GOES
+    df_goes["Year"] = df_goes["Snapshot Time"].dt.year
+    df_goes_grouped = df_goes.groupby([df_goes["Year"], "Class"]).size().reset_index(name="Count")
+
+    # Grafico GOES - Istogramma annuale
+    fig_goes = px.histogram(
+        df_goes_grouped, x="Year", y="Count", color="Class",
+        title="Attività Solare GOES (Istogramma Annuale)",
+        labels={"Year": "Anno", "Count": "Numero di Eventi"},
+        histfunc="sum",
         color_discrete_map=color_map
     )
 
@@ -84,17 +87,18 @@ if selected == "📊 Attività Solare":
         st.plotly_chart(fig_goes, use_container_width=True)
 
     # Creare il dataframe per il confronto con Fermi
-    df_fermi_grouped = df_fermi.groupby([df_fermi["Date"].dt.date, "Time"]).size().reset_index(name="Count_Fermi")
-    df_goes_grouped["Snapshot Time"] = pd.to_datetime(df_goes_grouped["Snapshot Time"])
+    df_fermi["Year"] = df_fermi["Date"].dt.year
+    df_fermi_grouped = df_fermi.groupby([df_fermi["Year"], "Time"]).size().reset_index(name="Count_Fermi")
 
     # Unire i due dataframe (Fermi e GOES)
-    df_combined = pd.merge(df_goes_grouped, df_fermi_grouped, left_on=["Snapshot Time", "Class"], right_on=["Date", "Time"], how="outer")
+    df_combined = pd.merge(df_goes_grouped, df_fermi_grouped, left_on="Year", right_on="Year", how="outer")
 
-    # Grafico di confronto tra GOES e Fermi
-    fig_comparison = px.bar(
-        df_combined, x="Snapshot Time", y=["Count", "Count_Fermi"],
-        title="Confronto Attività Solare: GOES vs Fermi",
-        labels={"Snapshot Time": "Data", "value": "Numero di Eventi"},
+    # Grafico di confronto tra GOES e Fermi - Istogramma annuale
+    fig_comparison = px.histogram(
+        df_combined, x="Year", y=["Count", "Count_Fermi"],
+        title="Confronto Attività Solare: GOES vs Fermi (Istogramma Annuale)",
+        labels={"Year": "Anno", "value": "Numero di Eventi"},
+        histfunc="sum",
         barmode="group"
     )
 
