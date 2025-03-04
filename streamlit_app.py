@@ -55,18 +55,29 @@ fig.update_layout(
     plot_bgcolor='lightgray'
 )
 
-# Creare un menu laterale
-st.sidebar.title("Menu")
-menu = st.sidebar.radio("Seleziona una sezione:", ["Home", "Dati GOES"])
+# Creare un menu laterale con icone e un aspetto elegante
+st.sidebar.title("Navigazione")
+menu = st.sidebar.selectbox(
+    "Seleziona una sezione:", 
+    ["🏠 Home", "📊 Dati GOES", "🔍 Dettagli Eventi"]
+)
 
 # Mostrare la sezione "Dati GOES"
-if menu == "Dati GOES":
-    st.title("Dati GOES: Attività Solare")
+if menu == "📊 Dati GOES":
+    st.title("📊 Dati GOES: Attività Solare")
     st.plotly_chart(fig)
     st.write("📊 **Dati elaborati:**")
     st.dataframe(df)
 
-# Altre sezioni possono essere aggiunte qui
-if menu == "Home":
+# Sezione "Home"
+if menu == "🏠 Home":
     st.title("Benvenuto nella Dashboard dell'Attività Solare")
-    st.write("Seleziona la sezione 'Dati GOES' per visualizzare i grafici relativi all'attività solare.")
+    st.write("Questa è la dashboard per visualizzare l'attività solare nel tempo.")
+    st.write("Seleziona la sezione '📊 Dati GOES' per visualizzare il grafico relativo all'attività solare e i dettagli.")
+
+# Sezione "Dettagli Eventi"
+if menu == "🔍 Dettagli Eventi":
+    st.title("🔍 Dettagli Eventi Solari")
+    st.write("In questa sezione, puoi approfondire i dettagli degli eventi solari registrati.")
+    st.write("Clicca su '📊 Dati GOES' per visualizzare i grafici e i dati relativi agli eventi solari.")
+
