@@ -3,3 +3,5 @@ pandas
 plotly
 openpyxl
 streamlit-option-menu
+bs4
+BeautifulSoup
