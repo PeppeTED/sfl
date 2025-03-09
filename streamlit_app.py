@@ -1,83 +1,93 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
+from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+import openpyxl
 
-# Caricare il file GOES
+# 1️⃣ Carica il file Excel con i collegamenti ipertestuali
 file_path_goes = "sfl_2005.xlsx"  # File sfl dal 2005 pagina GOES archivio
+wb = openpyxl.load_workbook(file_path_goes, data_only=False)
+ws = wb.active
+
+# 2️⃣ Estrarre i link ipertestuali dalla colonna 'Snapshot Time'
+links = []
+for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=1):
+    for cell in row:
+        if cell.hyperlink:
+            links.append(cell.hyperlink.target)
+        else:
+            links.append(None)
+
+# 3️⃣ Creare il DataFrame per i link
+snapshot_times = [cell.value for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=1) for cell in row]
+df_links = pd.DataFrame({"Snapshot Time": snapshot_times, "Real Link": links}).dropna(subset=["Real Link"])
+
+# Funzione per contare le righe nella tabella 'Event#'
+def get_event_count(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        tables = soup.find_all("table")
+        for table in tables:
+            headers = [th.text.strip() for th in table.find_all("th")]
+            if "Event#" in headers:
+                return len(table.find_all("tr")) - 1
+        return 0
+    except Exception:
+        return 0
+
+# 4️⃣ Applica la funzione di conteggio eventi
+df_links["Event Count"] = df_links["Real Link"].apply(get_event_count)
+df_links["Year"] = pd.to_datetime(df_links["Snapshot Time"], errors="coerce").dt.year
+event_counts_links = df_links.groupby("Year")["Event Count"].sum()
+
+# 5️⃣ Caricare i dati GOES
 df_goes = pd.read_excel(file_path_goes)
-
-# Pulire i nomi delle colonne
 df_goes.columns = df_goes.columns.str.strip()
-
-# Verificare se le colonne esistono nel file GOES
-if "Snapshot Time" not in df_goes.columns or "Largest Event" not in df_goes.columns:
-    st.error("Errore: Controlla i nomi delle colonne nel file GOES.")
-    st.stop()
-
-# Convertire la colonna in formato datetime per GOES
 df_goes["Snapshot Time"] = pd.to_datetime(df_goes["Snapshot Time"], errors="coerce")
-
-# Filtrare i dati dal 2005 per GOES
 df_goes = df_goes[df_goes["Snapshot Time"].dt.year >= 2005]
-
-# Estrarre la classe dell'evento solare per GOES
 df_goes["Class"] = df_goes["Largest Event"].astype(str).str[0]
-
-# Definire una palette di colori contrastanti per le classi di GOES
-color_map_goes = {
-    'A': 'red',          # Rosso per A
-    'B': 'orange',       # Arancio per B
-    'C': 'yellow',       # Giallo per C
-    'M': 'green',        # Verde per M
-    'X': 'blue'          # Blu per X
-}
-
-# Contare gli eventi per anno e classe per GOES
 df_grouped_goes = df_goes.groupby([df_goes["Snapshot Time"].dt.year, "Class"]).size().reset_index(name="Count")
 
-# Caricare il file FERMI
-file_path_fermi = "GBM FERMI.xlsx"  # File dei dati FERMI
+# 6️⃣ Caricare i dati FERMI
+file_path_fermi = "GBM FERMI.xlsx"
 df_fermi = pd.read_excel(file_path_fermi)
-
-# Pulire i nomi delle colonne del file FERMI
 df_fermi.columns = df_fermi.columns.str.strip()
-
-# Verificare se la colonna 'Date' esiste nel file FERMI
-if "Date" not in df_fermi.columns:
-    st.error("Errore: Controlla i nomi delle colonne nel file FERMI.")
-    st.stop()
-
-# Convertire la colonna 'Date' in formato datetime
 df_fermi["Date"] = pd.to_datetime(df_fermi["Date"], errors="coerce")
-
-# Filtrare i dati dal 2005 per FERMI
 df_fermi = df_fermi[df_fermi["Date"].dt.year >= 2005]
-
-# Conteggiare gli eventi annuali per FERMI (solo colonna 'Date')
 df_grouped_fermi = df_fermi.groupby(df_fermi["Date"].dt.year).size().reset_index(name="Count")
 
-# Creare un menu laterale con icone e un aspetto elegante
+# 🔹 INTERFACCIA STREAMLIT
 st.sidebar.title("Navigazione")
-menu = st.sidebar.selectbox(
-    "Seleziona una sezione:", 
-    ["🏠 Home", "📊 Dati GOES", "📈 Dati FERMI", "🔍 Dettagli Eventi"]
-)
+menu = st.sidebar.selectbox("Seleziona una sezione:", ["🏠 Home", "📊 Dati GOES", "📈 Dati FERMI", "🔍 Dettagli Eventi"])
 
-# Sezione "Dati GOES"
 if menu == "📊 Dati GOES":
     st.title("📊 Dati GOES: Attività Solare")
-    st.plotly_chart(px.bar(df_grouped_goes, x="Snapshot Time", y="Count", color="Class",
-                           title="Attività Solare nel Tempo (Dati GOES)",
-                           labels={"Snapshot Time": "Anno", "Count": "Numero di Eventi"},
-                           barmode="stack", color_discrete_map=color_map_goes))
+    
+    # Primo grafico (dati originali GOES)
+    fig_goes = px.bar(df_grouped_goes, x="Snapshot Time", y="Count", color="Class",
+                      title="Attività Solare nel Tempo (Dati GOES)",
+                      labels={"Snapshot Time": "Anno", "Count": "Numero di Eventi"},
+                      barmode="stack")
+    st.plotly_chart(fig_goes)
+    
+    # Secondo grafico (eventi dai link estratti)
+    st.write("### Eventi estratti dalle pagine web")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    event_counts_links.plot(kind="bar", color="skyblue", edgecolor="black", ax=ax)
+    ax.set_title("Numero Totale di Eventi per Anno (Dati dai Link)")
+    ax.set_xlabel("Anno")
+    ax.set_ylabel("Numero di Eventi")
+    st.pyplot(fig)
+    
     st.write("📊 **Dati elaborati (GOES):**")
     st.dataframe(df_goes)
 
-# Sezione "Dati FERMI"
 if menu == "📈 Dati FERMI":
     st.title("📈 Dati FERMI: Attività Solare")
-    st.write("Grafico dei dati relativi agli eventi solari nel tempo (dal file FERMI).")
-    # Creare il grafico a istogramma per i dati FERMI (conteggio degli eventi annuali)
     fig_fermi = px.bar(df_grouped_fermi, x="Date", y="Count",
                        title="Numero Totale di Eventi Solari (Dati FERMI)",
                        labels={"Date": "Anno", "Count": "Numero di Eventi"})
@@ -85,15 +95,11 @@ if menu == "📈 Dati FERMI":
     st.write("📊 **Dati elaborati (FERMI):**")
     st.dataframe(df_fermi)
 
-# Sezione "Home"
 if menu == "🏠 Home":
     st.title("Benvenuto nella Dashboard dell'Attività Solare")
-    st.write("Questa è la dashboard per visualizzare l'attività solare nel tempo.")
-    st.write("Seleziona la sezione '📊 Dati GOES' per visualizzare il grafico relativo all'attività solare GOES, "
-             "oppure '📈 Dati FERMI' per esplorare i dati FERMI.")
+    st.write("Questa dashboard visualizza l'attività solare nel tempo.")
+    st.write("📊 Vai su 'Dati GOES' o 'Dati FERMI' per esplorare i dati.")
 
-# Sezione "Dettagli Eventi"
 if menu == "🔍 Dettagli Eventi":
     st.title("🔍 Dettagli Eventi Solari")
-    st.write("In questa sezione, puoi approfondire i dettagli degli eventi solari registrati.")
-    st.write("Clicca su '📊 Dati GOES' o '📈 Dati FERMI' per visualizzare i grafici e i dati relativi agli eventi solari.")
+    st.write("Approfondisci i dettagli degli eventi solari registrati.")
